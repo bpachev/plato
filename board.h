@@ -7,8 +7,8 @@
 
 //Represents a 4x4x5 board
 typedef struct {
-	short whitePos[HEIGHT];
-	short blackPos[HEIGHT];
+	unsigned short whitePos[HEIGHT];
+	unsigned short blackPos[HEIGHT];
 	char heights[NSTACKS];
 	char whiteTurn;
 } PlatoBoard;
@@ -18,7 +18,7 @@ int doMove(PlatoBoard * board, int stackNum);
 int revertMove(PlatoBoard* board, int stackNum);
 
 int checkVictory(PlatoBoard* board);
-int checkLevelVictory(short mask);
-int checkPosVictory(short * pos);
+int checkLevelVictory(unsigned short mask);
+int checkPosVictory(unsigned short * pos);
 
 #endif

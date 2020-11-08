@@ -23,6 +23,7 @@ int testGame(const char* filename) {
 
 	char * p = buf;
 	int expectedResult = *p - '0';
+	int actualResult = 0;
 	printf("Expected result %d\n", expectedResult);
 
 	while ((p = fgets(buf, n+1, fp))) {
@@ -32,9 +33,29 @@ int testGame(const char* filename) {
 
 		int y = p[2] - '0';
 		int stackNum = LENGTH * x + y;
-		printf("Found move: %d %d, stacknum %d\n", x, y, stackNum);
+		const char * color = (board.whiteTurn) ? "White" : "Black";
+		printf("%s move: %d %d, stacknum %d\n", color, x, y, stackNum);
 		doMove(&board, stackNum);
-		if (checkVictory(&board)) printf("Game Over!\n");
+		if (actualResult) {
+			printf("Error - false early positive for victory!\n");
+			return false;
+		}
+
+		if (checkVictory(&board)) {
+			actualResult = (board.whiteTurn) ? 2 : 1;
+			if (actualResult != expectedResult) {
+				printf("Incorrect result! Computed %d, expected %d\n", actualResult, expectedResult);
+				return false;
+			}
+			printf("Game Over!\n");
+		}
+	}
+
+	if (actualResult != expectedResult) {
+		printf("Incorrect result! Computed %d, expected %d\n", actualResult, expectedResult);
+		for (int k =0; k < 4; k++) printf("White level %d: %x\n", k, board.whitePos[k]);
+		for (int k =0; k < 4; k++) printf("Black level %d: %x\n", k, board.blackPos[k]);
+		return false;
 	}
 
 	fclose(fp);
