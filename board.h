@@ -4,6 +4,9 @@
 #define HEIGHT 5
 #define NSTACKS 16
 #define LENGTH 4
+#define MATCH(mask, filter) ((mask&filter) == filter)
+#define DIAG_MATCH(mask) (MATCH(mask, 0x1248)||MATCH(mask, 0x8421))
+#define NUM_LEVEL_FILTERS 10
 
 //Represents a 4x4x5 board
 typedef struct {

@@ -1,30 +1,26 @@
 #include "stdio.h"
 #include "stdlib.h"
 #include "board.h"
-#include "stdbool.h"
+#include "string.h"
+#include "search.h"
 
-#define MAX_LINE_LEN 80
+#define MAX_LINE_LEN 81
 
-//Run a test game - ensure victory testing is correct
-int testGame(const char* filename) {
+//firstLIne is a pointer to a buffer where we store the first line
+int parseTest(const char* filename, char* firstLine, PlatoBoard * board) {
 	FILE * fp;
 	if (!(fp = fopen(filename, "r"))) {
 		printf("Cannot read from file %s!\n", filename);
 		return 0;
 	}
 	printf("Testing %s\n", filename);
-	int n = MAX_LINE_LEN + 1;
+	int n = MAX_LINE_LEN;
 	char buf[n];
-	PlatoBoard board;
-	init_board(&board);
+	char * p;
+	init_board(board);
 
-	//read first line, get expected result
-	fgets(buf, n+1, fp);
-
-	char * p = buf;
-	int expectedResult = *p - '0';
-	int actualResult = 0;
-	printf("Expected result %d\n", expectedResult);
+	//read first line, saving expected result for caller
+	fgets(firstLine, n+1, fp);
 
 	while ((p = fgets(buf, n+1, fp))) {
 		int x = p[0] - '0';
@@ -33,33 +29,71 @@ int testGame(const char* filename) {
 
 		int y = p[2] - '0';
 		int stackNum = LENGTH * x + y;
-		const char * color = (board.whiteTurn) ? "White" : "Black";
-		printf("%s move: %d %d, stacknum %d\n", color, x, y, stackNum);
-		doMove(&board, stackNum);
-		if (actualResult) {
-			printf("Error - false early positive for victory!\n");
-			return false;
+		if (checkVictory(board)) {
+			printf("Error - victory detected before end of game!\n");
+			return 0;
 		}
 
-		if (checkVictory(&board)) {
-			actualResult = (board.whiteTurn) ? 2 : 1;
-			if (actualResult != expectedResult) {
-				printf("Incorrect result! Computed %d, expected %d\n", actualResult, expectedResult);
-				return false;
-			}
-			printf("Game Over!\n");
-		}
+		const char * color = (board->whiteTurn) ? "White" : "Black";
+		printf("%s move: %d %d, stacknum %d\n", color, x, y, stackNum);
+		doMove(board, stackNum);
+
+	}
+
+	fclose(fp);
+	return 1;
+}
+
+//Run a test game - ensure victory testing is correct
+int testVictory(const char* filename) {
+	PlatoBoard board;
+	char firstLine[MAX_LINE_LEN];
+
+	parseTest(filename, firstLine, &board);
+	int expectedResult = firstLine[0] - '0', actualResult = 0;
+
+	if (checkVictory(&board)) {
+		actualResult = (board.whiteTurn) ? 2 : 1;
+		printf("Game Over!\n");
 	}
 
 	if (actualResult != expectedResult) {
 		printf("Incorrect result! Computed %d, expected %d\n", actualResult, expectedResult);
+/*	if (actualResult != expectedResult) {
+		printf("Incorrect result! Computed %d, expected %d\n", actualResult, expectedResult);
 		for (int k =0; k < 4; k++) printf("White level %d: %x\n", k, board.whitePos[k]);
 		for (int k =0; k < 4; k++) printf("Black level %d: %x\n", k, board.blackPos[k]);
 		return false;
+	}*/
+		return 0;
 	}
 
-	fclose(fp);
-	return true;
+	return 1;
+}
+
+int testOpportunityCount(const char * filename)
+{
+	PlatoBoard board;
+	char firstLine[MAX_LINE_LEN];
+	if (!parseTest(filename, firstLine, &board)) return 0;
+
+	int expectedOpportunities = firstLine[0]-'0';
+	int expectedForcing = firstLine[2]-'0';
+	int actualOpportunities = 0, actualForcing = 0;
+
+	if (board.whiteTurn) {
+		actualOpportunities = countOpportunities(board.blackPos, board.whitePos, &actualForcing);
+	} else {
+		actualOpportunities = countOpportunities(board.whitePos, board.blackPos, &actualForcing);
+	}
+
+	if ((actualOpportunities != expectedOpportunities) || (actualForcing != expectedForcing)) {
+		printf("Computed opportunities: %d, expected %d. Computed num forcing %d, expected %d.\n",
+			actualOpportunities, expectedOpportunities, actualForcing, expectedForcing);
+		return 0;
+	}
+
+	return 1;
 }
 
 int main(int argc, const char** argv) {
@@ -67,12 +101,36 @@ int main(int argc, const char** argv) {
 	printf("Test script for Pillars of Plato AI.\n");
 
 	if (argc < 2) {
-		printf("Usage testfile1 [testfile 2]\n");
+		printf("Usage [mode] testfile1 [testfile 2]\n");
 		return 0;
 	}
 
-	for (int i = 1; i < argc; i++) {
-		if (!testGame(argv[i])) {
+	int (*testMethod)(const char *) = &testVictory;
+	int start = 1;
+
+	if (strlen(argv[1]) == 1) {
+		if (argc < 3) {
+			printf("Usage [mode] testfile1 [testfile 2]\nWhen mode is provided, you must provide at least one testfile.\n");
+			return 0;
+		}
+
+		switch (argv[1][0]) {
+			//Simulate victory checking
+			case 'v':
+				testMethod = &testVictory;
+				break;
+			case 'o':
+				testMethod = &testOpportunityCount;
+				break;
+			default:
+				printf("Unrecognized test mode %s.\n", argv[1]);
+				return 0;
+		}
+		start = 2;
+	}
+
+	for (int i = start; i < argc; i++) {
+		if (!(*testMethod)(argv[i])) {
 			printf("Test case %s failed!\n", argv[i]);
 			return 1;
 		}
