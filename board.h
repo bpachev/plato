@@ -7,6 +7,7 @@
 #define MATCH(mask, filter) ((mask&filter) == filter)
 #define DIAG_MATCH(mask) (MATCH(mask, 0x1248)||MATCH(mask, 0x8421))
 #define NUM_LEVEL_FILTERS 10
+#define VALID_MOVE(board, i) (board->heights[i] < HEIGHT)
 
 //Represents a 4x4x5 board
 typedef struct {

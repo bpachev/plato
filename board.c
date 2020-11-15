@@ -1,9 +1,6 @@
 #include "stdio.h"
 #include "board.h"
 
-#define MATCH(mask, filter) ((mask&filter) == filter)
-#define DIAG_MATCH(mask) (MATCH(mask, 0x1248)||MATCH(mask, 0x8421))
-
 void init_board(PlatoBoard* board) {
 	int i;
 	for (i = 0; i < HEIGHT; i++) board->whitePos[i] = board->blackPos[i] = 0;

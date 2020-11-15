@@ -37,7 +37,7 @@ int parseTest(const char* filename, char* firstLine, PlatoBoard * board) {
 		const char * color = (board->whiteTurn) ? "White" : "Black";
 		printf("%s move: %d %d, stacknum %d\n", color, x, y, stackNum);
 		doMove(board, stackNum);
-
+		return 1;
 	}
 
 	fclose(fp);
@@ -96,6 +96,15 @@ int testOpportunityCount(const char * filename)
 	return 1;
 }
 
+int testMovePick(const char* filename)
+{
+	PlatoBoard board;
+	char firstLine[MAX_LINE_LEN];
+	if (!parseTest(filename, firstLine, &board)) return 0;
+	int depth = firstLine[0]-'0';
+	pickMove(&board, depth);
+}
+
 int main(int argc, const char** argv) {
 //	printf("AI for Pillars of Plato (3-D Connect4).\n");
 	printf("Test script for Pillars of Plato AI.\n");
@@ -121,6 +130,9 @@ int main(int argc, const char** argv) {
 				break;
 			case 'o':
 				testMethod = &testOpportunityCount;
+				break;
+			case 'm':
+				testMethod = &testMovePick;
 				break;
 			default:
 				printf("Unrecognized test mode %s.\n", argv[1]);

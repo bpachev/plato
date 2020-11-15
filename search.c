@@ -3,11 +3,16 @@
 #include "search.h"
 
 //Wrapper function to get the proposed move
-int pickMove(PlatoBoard* board) {
-	return 0;
+int pickMove(PlatoBoard* board, int searchDepth) {
+	int move = 0;
+	int score = alphaBetaSearch(board, searchDepth, -MAX_SCORE, -MAX_SCORE, &move);
+	const char * color = (board->whiteTurn) ? "White" : "Black";
+	printf("Picked move %d for %s, score %d\n", move, color, score);
+	return move;
 }
 
 //Compute the leaf node score
+//The computation is performed for the player whose move it is currently
 int score(PlatoBoard* board)
 {
 	unsigned short * pos, * otherPos;
@@ -22,7 +27,55 @@ int score(PlatoBoard* board)
 
 	//Check to see if this move wins
 	if (checkPosVictory(pos)) return MAX_SCORE;
-//	return scoreColor(pos, otherPos) - scoreColor();
+	int myForcing=0, otherForcing=0;
+	int myOpportunities = countOpportunities(pos, otherPos, &myForcing);
+	int otherOpportunities = countOpportunities(otherPos, pos, &otherForcing);
+	//If this move doesn't win, and leaves our opponent with a way to win, we are toast
+	if (otherForcing) return -MAX_SCORE+1; //game over in 1 move
+	if (myForcing > 1) return MAX_SCORE-2; //we have two threats, and he has none, so we win in two moves
+	return FORCING_WEIGHT * myForcing + OPPORTUNITY_WEIGHT * myOpportunities - OPPONENT_OPPORTUNITY_WEIGHT * otherOpportunities;
+}
+
+//Perform alpha beta search - returning the best outcome
+int alphaBetaSearch(PlatoBoard* board, int depth, int my_best, int other_best, int* bestMove)
+{
+	int scores[NSTACKS];
+	int i, temp_score;
+	register int best = 0;
+	//Don't explore past a terminal node
+	if (checkVictory(board)) return -MAX_SCORE;
+
+	if (depth <= 1) {
+		for (i = 0; i < NSTACKS; i++) {
+			if (!VALID_MOVE(board, i)) continue;
+			doMove(board, i);
+			scores[i] = temp_score = score(board);
+			revertMove(board, i);
+			if (-temp_score < other_best) return temp_score;
+			if (temp_score > my_best) {
+				my_best = temp_score;
+				best = i;
+			}
+		}
+
+		*bestMove = best;
+		return my_best;
+	}
+
+	int otherBestMove = 0;
+	//TODO:: add move ordering
+	for (i = 0; i < NSTACKS; i++) {
+		if (!VALID_MOVE(board, i)) continue;
+		doMove(board, i);
+		scores[i] = temp_score = -alphaBetaSearch(board, depth-1, other_best, my_best, &otherBestMove);
+		revertMove(board, i);
+		//prune this node
+		if (-temp_score < other_best) return temp_score;
+		if (temp_score > my_best) {my_best = temp_score; best = i;}
+	}
+
+	*bestMove = best;
+	return my_best;
 }
 
 //Count and return the total number of squares where placing a token would win
@@ -39,12 +92,13 @@ int countOpportunities(unsigned short* pos, unsigned short* otherPos, int* numFo
 
 	//First, check each level
 	for (i = 0; i < HEIGHT; i++) {
+		opportunities[i] = 0;
 		if (!pos[i]) continue;
 		for (j = 0; j < NUM_LEVEL_FILTERS; j++) {
 			//See https://stackoverflow.com/questions/108318/whats-the-simplest-way-to-test-whether-a-number-is-a-power-of-2-in-c
-			unsigned short maybe_pow2 = (~(pos[i]&filters[j])) & filters[j];
+			unsigned short maybe_pow2 = FILTER_COMPLEMENT(pos[i], filters[j]);
 			//printf("Filter %x, maybepow2 %x, %x\n", filters[j], maybe_pow2, maybe_pow2&(maybe_pow2-1));
-			if (maybe_pow2 && !(maybe_pow2&(maybe_pow2-1))) {
+			if (IS_POW2(maybe_pow2)) {
 				opportunities[i] |= maybe_pow2;
 			}
 		}
@@ -53,6 +107,9 @@ int countOpportunities(unsigned short* pos, unsigned short* otherPos, int* numFo
 	//Check verticals - note because of how we stack things, the only possibilities to win are on the top two levels
 	opportunities[3] |= (pos[0]&pos[1]&pos[2]);
 	opportunities[4] |= (pos[1]&pos[2]&pos[3]);
+
+	//for(i=0; i<HEIGHT; i++) printf("opp level %d %x\n", i, opportunities[i]);
+
 
 	//Check diagonals - start with the simpler ones
 	unsigned short forwardMasks[4];
@@ -100,16 +157,29 @@ int countOpportunities(unsigned short* pos, unsigned short* otherPos, int* numFo
 			if (i < 3) temp1 &= backwardMasks[2-i];
 			opportunities[i+offset] |= (temp1 << i) + (temp1 >> i);
 		}
+
+		unsigned short diagMask = (base[0] & 0x9) + (base[1] & 0x60) + (base[2] & 0x600) + (base[3] & 0x9000);
+		unsigned short maybe_pow2 = FILTER_COMPLEMENT(diagMask, 0x8421);
+		if (IS_POW2(maybe_pow2)) opportunities[offset + pow2_row(maybe_pow2)] |= maybe_pow2;
+		maybe_pow2 = FILTER_COMPLEMENT(diagMask, 0x1248);
+		if (IS_POW2(maybe_pow2)) opportunities[offset + pow2_row(maybe_pow2)] |= maybe_pow2;
+
+		unsigned short offDiagMask = (base[3] & 0x9) + (base[2] & 0x60) + (base[1] & 0x600) + (base[0] & 0x9000);
+		maybe_pow2 = FILTER_COMPLEMENT(diagMask, 0x8421);
+		if (IS_POW2(maybe_pow2)) opportunities[offset + 3 - pow2_row(maybe_pow2)] |= maybe_pow2;
+		maybe_pow2 = FILTER_COMPLEMENT(diagMask, 0x1248);
+		if (IS_POW2(maybe_pow2)) opportunities[offset + 3 - pow2_row(maybe_pow2)] |= maybe_pow2;
 	}
 
-	//printf("pos level 0 %x\n", pos[0]);
 
 	int numOps = 0;
 	int numForce = 0;
 	for (i = 0; i < HEIGHT; i++) {
+		//printf("pos level %d %x\n", i, pos[i]);
 		//We cannot play in a square if there is a piece of the opposite color
 		//So three-in- a rows don't matter if there is not something already there
 		opportunities[i] &= ~(otherPos[i]);
+		//printf("opp level %d %x\n", i, opportunities[i]);
 		numOps += __builtin_popcount(opportunities[i]);
 		//If we're on the first level, any three in a row is a threat
 		//Otherwise, we need to check the leve below to see if there is 'support' for the peice
@@ -120,3 +190,13 @@ int countOpportunities(unsigned short* pos, unsigned short* otherPos, int* numFo
 
 	return numOps;
 }
+
+//Figure out what 'row' a power of two lives on
+//Mathematically, this is floor(log(pow2)/log(4))
+//But I want to avoid FLOPS
+int pow2_row(unsigned short pow2) {
+	int row = 0;
+	if (pow2 >= 0x100) {row += 2; pow2 >> 8;}
+	return row + (pow2 >= 16);
+}
+
