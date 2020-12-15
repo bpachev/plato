@@ -105,6 +105,42 @@ int testMovePick(const char* filename)
 	pickMove(&board, depth);
 }
 
+int playTestGame()
+{
+	char* line = NULL;
+	PlatoBoard board;
+	PlatoBoard* boardp = &board;
+	size_t len;
+	init_board(boardp);
+
+	while (1) {
+		printf("White's move: ");
+		getline(&line, &len, stdin);
+		int stack = 4*(line[0]-'0') + (line[2]-'0');
+		
+		if (!VALID_MOVE(boardp, stack)) {
+			printf("Invalid move!\n");
+			continue;
+		}
+
+		doMove(boardp, stack);
+		if (checkVictory(boardp)) {
+			printf("You win!\n");
+			break;
+		}
+		//TODO -- allow user to provide search depth
+		int move = pickMove(boardp, 4);
+		doMove(boardp, move);
+		printf("Black's Move: %d %d\n", move/4, move % 4);
+		if (checkVictory(boardp)) {
+			printf("AI wins!\n");
+			break;
+		}
+	}
+
+	return 0;
+}
+
 int main(int argc, const char** argv) {
 //	printf("AI for Pillars of Plato (3-D Connect4).\n");
 	printf("Test script for Pillars of Plato AI.\n");
@@ -118,6 +154,10 @@ int main(int argc, const char** argv) {
 	int start = 1;
 
 	if (strlen(argv[1]) == 1) {
+		if (argv[1][0] == 'g') {
+			return playTestGame();
+		}
+
 		if (argc < 3) {
 			printf("Usage [mode] testfile1 [testfile 2]\nWhen mode is provided, you must provide at least one testfile.\n");
 			return 0;
