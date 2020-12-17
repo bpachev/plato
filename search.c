@@ -6,8 +6,16 @@
 int pickMove(PlatoBoard* board, int searchDepth) {
 	int move = 0;
 	int score = alphaBetaSearch(board, searchDepth, -MAX_SCORE, -MAX_SCORE, &move);
+    if(board->heights[move] >= HEIGHT){
+        for(int i = 0; i <= NSTACKS; i++){
+            if(board->heights[i] < HEIGHT){
+                move = i;
+                break;
+            }
+        }
+    }
 	const char * color = (board->whiteTurn) ? "White" : "Black";
-	printf("Picked move %d for %s, score %d\n", move, color, score);
+    //printf("Picked move %d for %s, score %d\n", move, color, score);
 	return move;
 }
 
