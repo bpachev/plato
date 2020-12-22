@@ -1,21 +1,50 @@
 #include "stdio.h"
 #include "board.h"
 #include "search.h"
+#include "stdlib.h"
+#include "time.h"
 
 //Wrapper function to get the proposed move
 int pickMove(PlatoBoard* board, int searchDepth) {
+    if (!(board->whitePos[0]) || !(board->blackPos[0])) srand(time(0));
 	int move = 0;
-	int score = alphaBetaSearch(board, searchDepth, -MAX_SCORE, -MAX_SCORE, &move);
-    if(board->heights[move] >= HEIGHT){
-        for(int i = 0; i <= NSTACKS; i++){
-            if(board->heights[i] < HEIGHT){
-                move = i;
-                break;
-            }
-        }
-    }
-	const char * color = (board->whiteTurn) ? "White" : "Black";
-    //printf("Picked move %d for %s, score %d\n", move, color, score);
+	int scores[NSTACKS];
+
+	int otherBestMove = 0;
+	int my_best = -MAX_SCORE;
+	int other_best = -MAX_SCORE;
+	int i, temp_score;
+	// Consider each possible move (note pruning usually doesn't help on the first level)
+	for (i = 0; i < NSTACKS; i++) {
+		if (!VALID_MOVE(board, i)) continue;
+		doMove(board, i);
+		scores[i] = temp_score = -alphaBetaSearch(board, searchDepth-1, other_best, my_best, &otherBestMove);
+		revertMove(board, i);
+		if (temp_score > my_best) my_best = temp_score;
+	}
+
+	int candidates[NSTACKS];
+	int num_candidates = 0;
+	for (i = 0; i < NSTACKS; i++) {
+		if (VALID_MOVE(board, i) && scores[i] == my_best) candidates[num_candidates++] = i;
+	}
+
+	if (num_candidates > 1) {
+		move = candidates[rand()%num_candidates];
+	}
+	else if (num_candidates == 1) move = candidates[0];
+
+	// Failsafe to avoid a crash
+	if(!VALID_MOVE(board, move)) {
+		for(int i = 0; i < NSTACKS; i++) {
+			if(VALID_MOVE(board,i)){
+		    	move = i;
+				break;
+			}
+		}
+	}
+	//const char * color = (board->whiteTurn) ? "White" : "Black";
+	//printf("Picked move %d for %s, score %d\n", move, color, score);
 	return move;
 }
 
@@ -47,7 +76,6 @@ int score(PlatoBoard* board)
 //Perform alpha beta search - returning the best outcome
 int alphaBetaSearch(PlatoBoard* board, int depth, int my_best, int other_best, int* bestMove)
 {
-	int scores[NSTACKS];
 	int i, temp_score;
 	register int best = 0;
 	//Don't explore past a terminal node
@@ -57,7 +85,7 @@ int alphaBetaSearch(PlatoBoard* board, int depth, int my_best, int other_best, i
 		for (i = 0; i < NSTACKS; i++) {
 			if (!VALID_MOVE(board, i)) continue;
 			doMove(board, i);
-			scores[i] = temp_score = score(board);
+			temp_score = score(board);
 			revertMove(board, i);
 			if (-temp_score < other_best) return temp_score;
 			if (temp_score > my_best) {
@@ -75,7 +103,7 @@ int alphaBetaSearch(PlatoBoard* board, int depth, int my_best, int other_best, i
 	for (i = 0; i < NSTACKS; i++) {
 		if (!VALID_MOVE(board, i)) continue;
 		doMove(board, i);
-		scores[i] = temp_score = -alphaBetaSearch(board, depth-1, other_best, my_best, &otherBestMove);
+		temp_score = -alphaBetaSearch(board, depth-1, other_best, my_best, &otherBestMove);
 		revertMove(board, i);
 		//prune this node
 		if (-temp_score < other_best) return temp_score;
@@ -116,7 +144,7 @@ int countOpportunities(unsigned short* pos, unsigned short* otherPos, int* numFo
 	opportunities[3] |= (pos[0]&pos[1]&pos[2]);
 	opportunities[4] |= (pos[1]&pos[2]&pos[3]);
 
-	//for(i=0; i<HEIGHT; i++) printf("opp level %d %x\n", i, opportunities[i]);
+	//for(i=0; i<HEIGHT; i++) printf("opp level %d %x, pos %x\n", i, opportunities[i], pos[i]);
 
 
 	//Check diagonals - start with the simpler ones
@@ -204,7 +232,7 @@ int countOpportunities(unsigned short* pos, unsigned short* otherPos, int* numFo
 //But I want to avoid FLOPS
 int pow2_row(unsigned short pow2) {
 	int row = 0;
-	if (pow2 >= 0x100) {row += 2; pow2 >> 8;}
+	if (pow2 >= 0x100) {row += 2; pow2 >>= 8;}
 	return row + (pow2 >= 16);
 }
 

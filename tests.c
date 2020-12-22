@@ -37,7 +37,7 @@ int parseTest(const char* filename, char* firstLine, PlatoBoard * board) {
 		const char * color = (board->whiteTurn) ? "White" : "Black";
 		printf("%s move: %d %d, stacknum %d\n", color, x, y, stackNum);
 		doMove(board, stackNum);
-		return 1;
+		//return 1;
 	}
 
 	fclose(fp);
