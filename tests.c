@@ -102,7 +102,16 @@ int testMovePick(const char* filename)
 	char firstLine[MAX_LINE_LEN];
 	if (!parseTest(filename, firstLine, &board)) return 0;
 	int depth = firstLine[0]-'0';
-	pickMove(&board, depth);
+	int row = firstLine[2]-'0';
+	int col = firstLine[4]-'0';
+	int move = pickMove(&board, depth);
+	int picked_row = move / 4;
+	int picked_col = move % 4;
+	if (picked_row != row || picked_col != col) {
+		printf("Expected %d %d, picked move %d %d!\n", row, col, picked_row, picked_col);
+		return 0;
+	}
+	return 1;
 }
 
 int playTestGame()

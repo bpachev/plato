@@ -1,0 +1,7 @@
+4 0 #search depth 4, expect White to play on stack 0 (0 0) to avoid losing in 1
+0 0
+0 0
+0 1
+0 0
+0 1
+0 0

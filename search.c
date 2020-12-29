@@ -18,6 +18,7 @@ int pickMove(PlatoBoard* board, int searchDepth) {
 	for (i = 0; i < NSTACKS; i++) {
 		if (!VALID_MOVE(board, i)) continue;
 		doMove(board, i);
+		//printf("Exploring move %d:\n", i);
 		scores[i] = temp_score = -alphaBetaSearch(board, searchDepth-1, other_best, my_best, &otherBestMove);
 		revertMove(board, i);
 		if (temp_score > my_best) my_best = temp_score;
@@ -25,7 +26,9 @@ int pickMove(PlatoBoard* board, int searchDepth) {
 
 	int candidates[NSTACKS];
 	int num_candidates = 0;
+	//printf("Best score %d\n", my_best);
 	for (i = 0; i < NSTACKS; i++) {
+	    //printf("Move %d, score %d\n",i, scores[i]);
 		if (VALID_MOVE(board, i) && scores[i] == my_best) candidates[num_candidates++] = i;
 	}
 
@@ -78,6 +81,7 @@ int alphaBetaSearch(PlatoBoard* board, int depth, int my_best, int other_best, i
 {
 	int i, temp_score;
 	register int best = 0;
+	int best_local_score = -MAX_SCORE;
 	//Don't explore past a terminal node
 	if (checkVictory(board)) return -MAX_SCORE;
 
@@ -88,14 +92,14 @@ int alphaBetaSearch(PlatoBoard* board, int depth, int my_best, int other_best, i
 			temp_score = score(board);
 			revertMove(board, i);
 			if (-temp_score < other_best) return temp_score;
-			if (temp_score > my_best) {
-				my_best = temp_score;
+			if (temp_score > best_local_score) {
+				best_local_score = temp_score;
 				best = i;
 			}
 		}
 
 		*bestMove = best;
-		return my_best;
+		return best_local_score;
 	}
 
 	int otherBestMove = 0;
@@ -107,11 +111,16 @@ int alphaBetaSearch(PlatoBoard* board, int depth, int my_best, int other_best, i
 		revertMove(board, i);
 		//prune this node
 		if (-temp_score < other_best) return temp_score;
-		if (temp_score > my_best) {my_best = temp_score; best = i;}
+		if (temp_score > my_best) my_best = temp_score;
+		if (temp_score > best_local_score) {
+			best_local_score = temp_score;
+			best = i;
+		}
 	}
 
+    //printf("\tAlpha-beta search called with depth %d, picked move %d, score %d other score %d\n", depth, best, best_local_score, other_best);
 	*bestMove = best;
-	return my_best;
+	return best_local_score;
 }
 
 //Count and return the total number of squares where placing a token would win
