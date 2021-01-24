@@ -1,0 +1,7 @@
+1 1 #A three in a row that is forcing - vertically
+0 0
+0 0
+0 1
+0 0
+0 1
+0 0

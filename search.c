@@ -128,7 +128,7 @@ int alphaBetaSearch(PlatoBoard* board, int depth, int my_best, int other_best, i
 
 int countOpportunities(unsigned short* pos, unsigned short* otherPos, int* numForcing)
 {
-	unsigned short opportunities[5];
+	unsigned short opportunities[HEIGHT];
 	int i,j;
 	//We logically check each 4-in-a row as for the victory checking
 	//However, our processing is more intense
@@ -162,7 +162,7 @@ int countOpportunities(unsigned short* pos, unsigned short* otherPos, int* numFo
 	unsigned short temp1, temp2;
 	static const unsigned short colMasks[] = {0x1111, 0x2222, 0x4444, 0x8888};
 
-	for (int offset = 0; offset < 2; offset++) {
+	for (int offset = 0; offset < HEIGHT-3; offset++) {
 		unsigned short * base = pos + offset;
 		//first handle row
 		//extract first and last row
@@ -221,13 +221,13 @@ int countOpportunities(unsigned short* pos, unsigned short* otherPos, int* numFo
 	int numForce = 0;
 	for (i = 0; i < HEIGHT; i++) {
 		//printf("pos level %d %x\n", i, pos[i]);
-		//We cannot play in a square if there is a piece of the opposite color
+		//We cannot play in a square if is is already occupied
 		//So three-in- a rows don't matter if there is not something already there
-		opportunities[i] &= ~(otherPos[i]);
+		opportunities[i] &= ~(otherPos[i] | pos[i]);
 		//printf("opp level %d %x\n", i, opportunities[i]);
 		numOps += __builtin_popcount(opportunities[i]);
 		//If we're on the first level, any three in a row is a threat
-		//Otherwise, we need to check the leve below to see if there is 'support' for the peice
+		//Otherwise, we need to check the level below to see if there is 'support' for the piece
 		numForce +=  (i) ? __builtin_popcount(opportunities[i] & (pos[i-1] | otherPos[i-1])) : __builtin_popcount(opportunities[i]);
 	}
 

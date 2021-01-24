@@ -36,6 +36,10 @@ int parseTest(const char* filename, char* firstLine, PlatoBoard * board) {
 
 		const char * color = (board->whiteTurn) ? "White" : "Black";
 		printf("%s move: %d %d, stacknum %d\n", color, x, y, stackNum);
+		if (!VALID_MOVE(board, stackNum)) {
+		    printf("Move is invalid - check your test or the defined board height.\n");
+		    return 0;
+		}
 		doMove(board, stackNum);
 		//return 1;
 	}
@@ -49,7 +53,10 @@ int testVictory(const char* filename) {
 	PlatoBoard board;
 	char firstLine[MAX_LINE_LEN];
 
-	parseTest(filename, firstLine, &board);
+	if (!parseTest(filename, firstLine, &board)) {
+	    printf("Error parsing test - skipping.\n");
+	    return 1;
+	}
 	int expectedResult = firstLine[0] - '0', actualResult = 0;
 
 	if (checkVictory(&board)) {
@@ -75,7 +82,10 @@ int testOpportunityCount(const char * filename)
 {
 	PlatoBoard board;
 	char firstLine[MAX_LINE_LEN];
-	if (!parseTest(filename, firstLine, &board)) return 0;
+	if (!parseTest(filename, firstLine, &board)) {
+	    printf("Error parsing test - skipping.\n");
+	    return 1;
+	}
 
 	int expectedOpportunities = firstLine[0]-'0';
 	int expectedForcing = firstLine[2]-'0';
@@ -100,7 +110,10 @@ int testMovePick(const char* filename)
 {
 	PlatoBoard board;
 	char firstLine[MAX_LINE_LEN];
-	if (!parseTest(filename, firstLine, &board)) return 0;
+	if (!parseTest(filename, firstLine, &board)) {
+	    printf("Error parsing test - skipping.\n");
+	    return 1;
+	}
 	int depth = firstLine[0]-'0';
 	int row = firstLine[2]-'0';
 	int col = firstLine[4]-'0';

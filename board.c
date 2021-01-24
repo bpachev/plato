@@ -92,10 +92,13 @@ int checkPosVictory(unsigned short* pos) {
 	if (!pos[3] || !pos[2] || !pos[1]) return 0;
 	//Check for a vertical win
 	unsigned short middle = pos[1] & pos[2] & pos[3];
-	if (middle&pos[0] || middle&pos[4]) return 1;
+	if (middle&pos[0]) return 1;
+	else if (HEIGHT >= 5 && (middle&pos[4])) return 1;
 
 	//Check for diagonal victories
-	return checkDiagVictory(pos) || checkDiagVictory(pos+1);
+	for (i = 0; i < HEIGHT-3; i++) {
+    	if (checkDiagVictory(pos+i)) return 1;
+	}
 }
 
 int checkVictory(PlatoBoard * board) {
